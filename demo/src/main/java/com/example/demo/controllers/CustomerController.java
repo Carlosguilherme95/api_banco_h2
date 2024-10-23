@@ -6,65 +6,53 @@ import com.example.demo.repositories.CustomerRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
-import org.springframework.data.annotation.Id;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import com.example.demo.service.CustomerService;
 
 import java.util.List;
 import java.util.Optional;
 
 @RestController
+@Validated
+@RequestMapping("/customers")
 public class CustomerController {
 
     @Autowired
     private CustomerRepository customerRepository;
+    @Autowired
+    private CustomerService customerService;
 
-    @PostMapping("/customers")
+    @PostMapping
     public ResponseEntity<CustomerModel> createNewCustomer(@RequestBody @Valid CustomerRecordDto customerRecordDto) {
-        var customerModel = new CustomerModel();
-        BeanUtils.copyProperties(customerRecordDto, customerModel);
-        return ResponseEntity.status(HttpStatus.CREATED).body(customerRepository.save(customerModel));
+        CustomerModel customerModel = customerService.createCustomer(customerRecordDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(customerModel);
     }
-
-    @GetMapping("/customers")
+    @GetMapping
     public ResponseEntity<List<CustomerModel>> getAllCustomers() {
-        return ResponseEntity.ok(customerRepository.findAll());
+        List<CustomerModel> customers = customerService.getAllCustomers();
+        return ResponseEntity.ok(customers);
     }
 
-    @GetMapping("/customers/{id}")
-    public ResponseEntity<Object> getOneCustomer(@PathVariable(value = "id") Long id) {
-        Optional<CustomerModel> customerOpt = customerRepository.findById(id);
-        if (customerOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Cliente não encontrado");
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteCustomer(@PathVariable Long id){
+        customerService.deleteCustomer(id);
+        return ResponseEntity.noContent().build();
+    }
+    @GetMapping("/{id}")
+    public ResponseEntity<CustomerModel> findCustomerById(@PathVariable Long id) {
+        CustomerModel customer = customerService.getUserById(id);
+        if (customer != null) {
+            return ResponseEntity.ok(customer);
         } else {
-            return ResponseEntity.ok(customerOpt.get());
+            return ResponseEntity.notFound().build();
         }
     }
-
-    @PutMapping("/customers/{id}")
-    public ResponseEntity<Object> updateCustomer(@PathVariable(value = "id") Long id,
-                                                 @RequestBody @Valid CustomerRecordDto customerRecordDto) {
-        Optional<CustomerModel> customerOpt = customerRepository.findById(id);
-        if (customerOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Cliente não encontrado");
-        }
-
-        var existingCustomer = customerOpt.get();
-        BeanUtils.copyProperties(customerRecordDto, existingCustomer, "id"); // Evitar sobrescrever o ID
-        return ResponseEntity.ok(customerRepository.save(existingCustomer));
+    @PutMapping("/{id}")
+    public ResponseEntity<CustomerModel> updateCustomer(@PathVariable Long id, @RequestBody CustomerModel updateCustomer) {
+        return ResponseEntity.ok(customerService.updateCustomer(id, updateCustomer));
     }
-    @DeleteMapping("/customers/{id}")
-    public ResponseEntity<Object> deleteCustomer(@PathVariable(value = "id") Long id) {
-        Optional<CustomerModel> customerOpt = customerRepository.findById(id);
 
-        if (customerOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Cliente não encontrado");
-        }
-
-        customerRepository.delete(customerOpt.get());
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
-    }
 }
-
